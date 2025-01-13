@@ -18,6 +18,19 @@ class ExamDetailsPage extends StatelessWidget {
     );
   }
 
+  /// Formata o tempo de estudo (em segundos) para "X h Y min".
+  String _formatStudyTime(double totalSeconds) {
+    final totalInt = totalSeconds.toInt();
+    final hours = totalInt ~/ 3600;
+    final minutes = (totalInt % 3600) ~/ 60;
+
+    if (hours > 0) {
+      return '$hours h ${minutes} min';
+    } else {
+      return '${minutes} min';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Pegamos o Map enviado pelo Navigator.pushNamed:
@@ -47,7 +60,7 @@ class ExamDetailsPage extends StatelessWidget {
         // Pegar a lista de exames atualizada do usuário
         final exams = authProvider.currentUser!.exams;
 
-        // Localiza o exame cujo 'examId' corresponde a examId
+        // Localiza o exame cujo 'examId' corresponde ao examId
         final currentExam = exams.firstWhere(
           (e) => e['examId'] == examId,
           orElse: () => null,
@@ -126,7 +139,7 @@ class ExamDetailsPage extends StatelessWidget {
 
           // --------------------- CORPO/CONTEÚDO ---------------------
           body: Container(
-            // Fundo com um gradiente suave, igual ao usado no HomePage
+            // Fundo com um gradiente suave
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -153,6 +166,12 @@ class ExamDetailsPage extends StatelessWidget {
                     itemBuilder: (ctx, index) {
                       final subject = Subject.fromJson(subjects[index]);
 
+                      // Calculamos o total de estudo (studyTime + dailyStudyTime)
+                      final double totalStudySeconds =
+                          subject.studyTime + subject.dailyStudyTime;
+                      final formattedStudyTime =
+                          _formatStudyTime(totalStudySeconds);
+
                       return Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16.0,
@@ -160,11 +179,15 @@ class ExamDetailsPage extends StatelessWidget {
                         ),
                         child: InkWell(
                           onTap: () {
+                            // Aqui passamos userId e examId para o SubjectDetailsPage
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (ctx) =>
-                                    SubjectDetailsPage(subject: subject),
+                                builder: (ctx) => SubjectDetailsPage(
+                                  subject: subject,
+                                  userId: userId,
+                                  examId: examId,
+                                ),
                               ),
                             );
                           },
@@ -186,6 +209,7 @@ class ExamDetailsPage extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              // ListTile estilizado
                               child: ListTile(
                                 // Ícone circular
                                 leading: Container(
@@ -208,6 +232,7 @@ class ExamDetailsPage extends StatelessWidget {
                                     size: 24,
                                   ),
                                 ),
+                                // Nome da Disciplina
                                 title: Text(
                                   subject.name,
                                   style: const TextStyle(
@@ -215,12 +240,46 @@ class ExamDetailsPage extends StatelessWidget {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                subtitle: Text(
-                                  'Peso: ${subject.weight}',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade800,
-                                  ),
+                                // Exibe o peso e o total de horas estudadas (formatadas)
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.scale_outlined,
+                                          color: Colors.grey.shade800,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Peso: ${subject.weight}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey.shade800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.access_time_outlined,
+                                          color: Colors.grey.shade800,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Estudado: $formattedStudyTime',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey.shade800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                                 trailing: const Icon(
                                   Icons.arrow_forward_ios_rounded,

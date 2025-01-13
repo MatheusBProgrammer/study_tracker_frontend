@@ -1,37 +1,59 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import '../utils/app_routes.dart';
+import 'package:http/http.dart' as http;
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+class _RegisterPageState extends State<RegisterPage> {
   bool _isLoading = false;
+  final TextEditingController _nameCtrl = TextEditingController();
+  final TextEditingController _emailCtrl = TextEditingController();
+  final TextEditingController _passwordCtrl = TextEditingController();
 
-  Future<void> _login() async {
+  Future<void> _register() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      await Provider.of<AuthProvider>(context, listen: false).login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
+      // Monta o body para mandar no POST (JSON)
+      final body = {
+        "name": _nameCtrl.text.trim(),
+        "email": _emailCtrl.text.trim(),
+        "password": _passwordCtrl.text.trim(),
+        "exams": [] // se quiser já iniciar sem exams
+      };
+
+      // Faz a requisição para criar usuário (ajuste a URL conforme necessário)
+      final url = Uri.parse('http://localhost:8080/api/users/create');
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: encodeJson(body), // Precisaria de um import ou uso de jsonEncode
       );
-      // Ao logar com sucesso, vai para a Home
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+
+      if (response.statusCode == 201) {
+        // Sucesso
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Usuário criado com sucesso!')),
+        );
+        // Navega de volta à tela de login, por exemplo
+        Navigator.pop(context);
+      } else {
+        // Erro
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao criar usuário: ${response.body}')),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: $e')),
+        SnackBar(content: Text('Erro de conexão: $e')),
       );
     } finally {
       setState(() {
@@ -40,17 +62,15 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  /// Navega para a página de registro
-  void _goToRegister() {
-    Navigator.pushNamed(context, AppRoutes.register);
+  // Se não tiver importado 'dart:convert' e usar `jsonEncode`, crie helper:
+  String encodeJson(Map<String, dynamic> data) {
+    return '{"name":"${data['name']}","email":"${data['email']}","password":"${data['password']}","exams":[]}';
   }
 
   @override
   Widget build(BuildContext context) {
-    // Podemos manter a cor de fundo e gradiente para toda a tela, de forma
-    // coerente com seu estilo.
     return Scaffold(
-      // Removemos o backgroundColor se quisermos usar gradiente direto no body
+      // Gradiente de fundo
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -77,7 +97,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16.0),
-                  // Gradiente interno para o card (opcional)
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -90,7 +109,6 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Nome do APP
                     Text(
                       'Contadeiro',
                       style: TextStyle(
@@ -101,7 +119,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Bem-vindo(a)! Faça Login para continuar.',
+                      'Crie sua conta',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.deepPurple.shade700,
@@ -110,42 +128,35 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Campo de Email
+                    // Campo Nome
                     CustomTextField(
-                      controller: _emailController,
+                      controller: _nameCtrl,
+                      hintText: 'Nome',
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Campo Email
+                    CustomTextField(
+                      controller: _emailCtrl,
                       hintText: 'Email',
                     ),
                     const SizedBox(height: 16),
 
-                    // Campo de Senha
+                    // Campo Senha
                     CustomTextField(
-                      controller: _passwordController,
+                      controller: _passwordCtrl,
                       hintText: 'Senha',
                       obscureText: true,
                     ),
                     const SizedBox(height: 24),
 
-                    // Botão Login ou indicador de carregando
+                    // Botão registrar
                     _isLoading
                         ? const CircularProgressIndicator()
                         : CustomButton(
-                            text: 'Entrar',
-                            onPressed: _login,
+                            text: 'Registrar',
+                            onPressed: _register,
                           ),
-                    const SizedBox(height: 16),
-
-                    // Link para criar conta
-                    GestureDetector(
-                      onTap: _goToRegister,
-                      child: Text(
-                        'Não tem conta? Registre-se',
-                        style: TextStyle(
-                          color: Colors.deepPurple.shade700,
-                          fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    )
                   ],
                 ),
               ),

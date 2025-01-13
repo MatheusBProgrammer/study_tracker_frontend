@@ -16,6 +16,9 @@ class AuthProvider with ChangeNotifier {
 
   // Getter para verificar estado de carregamento
   bool get isLoading => _isLoading;
+  int _totalStudySeconds = 0;
+
+  int get totalStudySeconds => _totalStudySeconds;
 
   /// Realiza o login do usuário
   Future<void> login(String email, String password) async {
@@ -32,8 +35,10 @@ class AuthProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         // Parse da resposta do backend e criação do objeto User
-        final userData = json.decode(response.body);
+        final userData = json.decode(utf8.decode(response.bodyBytes));
         _currentUser = User.fromJson(userData);
+        _totalStudySeconds = calculateTotalStudyHours(userData['exams']);
+
         _isAuthenticated = true; // Define o estado como autenticado
         notifyListeners(); // Notifica os listeners sobre a mudança no estado
         // **1) Recalcular pesos de todos os exames**
@@ -79,7 +84,8 @@ class AuthProvider with ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        final userData = json.decode(response.body);
+        final userData = json
+            .decode(utf8.decode(response.bodyBytes)); // Adicionado utf8.decode
         _currentUser = User.fromJson(userData); // Atualiza o objeto do usuário
         notifyListeners();
       } else {
@@ -117,6 +123,81 @@ class AuthProvider with ChangeNotifier {
       } catch (e) {
         debugPrint('Erro de conexão ao recalcular exame $examId: $e');
       }
+    }
+  }
+
+  int calculateTotalStudyHours(List<dynamic> exams) {
+    int totalStudyMinutes = 0;
+
+    for (var exam in exams) {
+      for (var subject in exam['subjects']) {
+        final studyTime =
+            subject['studyTime'] ?? 0; // Obtém o valor de studyTime
+        if (studyTime is String) {
+          // Converte String para número
+          totalStudyMinutes += int.tryParse(studyTime) ?? 0;
+        } else if (studyTime is num) {
+          // Faz o cast explícito para int se for num
+          totalStudyMinutes += studyTime.toInt();
+        }
+      }
+    }
+
+    return totalStudyMinutes;
+  }
+
+  /// Deleta um exame do usuário
+  Future<void> deleteExam(String? userId, String examId) async {
+    if (userId == null || _currentUser == null) return;
+
+    final url = Uri.parse(
+      'http://localhost:8080/api/exams/$userId/$examId',
+    );
+
+    try {
+      final response = await http.delete(
+        url,
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        // Remove o exame localmente
+        _currentUser!.exams.removeWhere((exam) => exam['examId'] == examId);
+        notifyListeners();
+        debugPrint('Exame $examId deletado com sucesso.');
+      } else {
+        throw Exception('Erro ao deletar exame: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Erro de conexão ao deletar exame: $e');
+      throw Exception('Erro de conexão ao deletar exame: $e');
+    }
+  }
+
+  /// Excluir uma disciplina
+  Future<void> deleteSubject(
+      String userId, String examId, String subjectId) async {
+    final url = Uri.parse(
+        'http://localhost:8080/api/subjects/$userId/$examId/$subjectId');
+    try {
+      final response =
+          await http.delete(url, headers: {'Content-Type': 'application/json'});
+      if (response.statusCode == 200) {
+        final exam = _currentUser?.exams.firstWhere(
+          (e) => e['examId'] == examId,
+          orElse: () => null,
+        );
+        if (exam != null) {
+          (exam['subjects'] as List)
+              .removeWhere((s) => s['subjectId'] == subjectId);
+          notifyListeners();
+        }
+      } else {
+        throw Exception('Erro ao deletar disciplina: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Erro de conexão ao deletar disciplina: $e');
+      throw Exception('Erro de conexão ao deletar disciplina: $e');
     }
   }
 }

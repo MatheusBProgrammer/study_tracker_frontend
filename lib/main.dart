@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:study_tracker_frontend/pages/home_page.dart';
 import 'package:study_tracker_frontend/pages/login_page.dart';
 import 'package:study_tracker_frontend/pages/exam_details_page.dart'; // Importa a página de detalhes do exame
+import 'package:study_tracker_frontend/pages/register_page.dart';
 import 'providers/auth_provider.dart';
 
 void main() {
@@ -24,6 +25,7 @@ class MyApp extends StatelessWidget {
         routes: {
           '/login': (ctx) => const LoginPage(),
           '/home': (ctx) => const HomePage(),
+          "/register": (ctx) => const RegisterPage(),
           '/exam-details': (ctx) => const ExamDetailsPage(),
         },
       ),

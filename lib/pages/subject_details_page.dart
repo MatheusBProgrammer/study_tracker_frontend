@@ -1,42 +1,83 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:study_tracker_frontend/pages/timer_page.dart';
 import '../models/subject.dart';
+import '../providers/auth_provider.dart';
 
 class SubjectDetailsPage extends StatelessWidget {
   final Subject subject;
+  final String userId;
+  final String examId;
 
-  const SubjectDetailsPage({super.key, required this.subject});
+  const SubjectDetailsPage({
+    Key? key,
+    required this.subject,
+    required this.userId,
+    required this.examId,
+  }) : super(key: key);
+
+  String _formatStudyTime(double secondsValue) {
+    final totalSeconds = secondsValue.toInt();
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    if (hours == 0 && minutes == 0) return '0 min';
+    return '${hours}h ${minutes}min';
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Conversão de segundos para (horas, minutos)
-    String _formatStudyTime(double secondsValue) {
-      final totalSeconds = secondsValue.toInt();
-      final hours = totalSeconds ~/ 3600;
-      final minutes = (totalSeconds % 3600) ~/ 60;
-
-      if (hours == 0 && minutes == 0) {
-        return '0 min';
-      }
-      return '${hours}h ${minutes}min';
-    }
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     return Scaffold(
-      // --------------------- APP BAR ---------------------
       appBar: AppBar(
-        elevation: 0,
         backgroundColor: Colors.deepPurple.shade600,
         title: Text(
           subject.name,
           style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+              color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: () async {
+              final confirm = await showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text("Confirmação"),
+                  content: const Text("Deseja remover esta disciplina?"),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text("Cancelar"),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text("Remover"),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                try {
+                  await authProvider.deleteSubject(
+                      userId, examId, subject.subjectId);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text("Disciplina removida com sucesso!")),
+                  );
+                  Navigator.of(context).pop();
+                } catch (error) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text("Erro ao remover disciplina.")),
+                  );
+                }
+              }
+            },
+          ),
+        ],
       ),
-
-      // --------------------- CORPO (COM GRADIENTE) ---------------------
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -54,8 +95,7 @@ class SubjectDetailsPage extends StatelessWidget {
           child: Card(
             elevation: 3,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.0),
-            ),
+                borderRadius: BorderRadius.circular(16.0)),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -128,48 +168,29 @@ class SubjectDetailsPage extends StatelessWidget {
           ),
         ),
       ),
-
-      // --------------------- BOTÃO FLUTUANTE ---------------------
-      floatingActionButton: Container(
+      floatingActionButton: SizedBox(
         width: 100,
         height: 100,
         child: FloatingActionButton(
           onPressed: () {
             Navigator.of(context).push(
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) =>
-                    TimerPage(),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                  return Stack(
-                    children: [
-                      Positioned.fill(
-                        child: Container(
-                          color: Colors.deepPurple.shade600
-                              .withOpacity(animation.value),
-                        ),
-                      ),
-                      ScaleTransition(
-                        scale: animation,
-                        child: child,
-                      ),
-                    ],
-                  );
-                },
+              MaterialPageRoute(
+                builder: (_) => TimerPage(
+                  userId: userId,
+                  examId: examId,
+                  subjectId: subject.subjectId,
+                ),
               ),
             );
           },
           backgroundColor: Colors.deepPurple.shade600,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(100),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
           child: const Text(
             'Timer',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ),
       ),
@@ -177,7 +198,6 @@ class SubjectDetailsPage extends StatelessWidget {
     );
   }
 
-  /// Método helper para montar uma "linha" de detalhes com ícone + label + valor
   Widget _buildDetailRow({
     required IconData icon,
     required String label,
@@ -186,11 +206,7 @@ class SubjectDetailsPage extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: Colors.deepPurple.shade600,
-          size: 20,
-        ),
+        Icon(icon, color: Colors.deepPurple.shade600, size: 20),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -199,58 +215,19 @@ class SubjectDetailsPage extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  color: Colors.deepPurple.shade800,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+                    color: Colors.deepPurple.shade800,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               Text(
                 value.isNotEmpty ? value : 'N/A',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.normal,
-                ),
+                style: const TextStyle(fontSize: 14),
               ),
             ],
           ),
         ),
       ],
-    );
-  }
-}
-
-class TimerPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            color: Colors.deepPurple.shade600,
-            child: Center(
-              child: Text(
-                'Contador em construção...',
-                style: TextStyle(
-                  fontSize: 24,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 40,
-            right: 20,
-            child: IconButton(
-              icon: Icon(Icons.close, color: Colors.white, size: 30),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
