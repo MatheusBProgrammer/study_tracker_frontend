@@ -9,7 +9,7 @@ import '../providers/auth_provider.dart';
 class AddExamModal extends StatefulWidget {
   final String? userId;
 
-  const AddExamModal({super.key, required this.userId});
+  const AddExamModal({Key? key, required this.userId}) : super(key: key);
 
   @override
   State<AddExamModal> createState() => _AddExamModalState();
@@ -19,6 +19,41 @@ class _AddExamModalState extends State<AddExamModal> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _totalWeightController = TextEditingController();
   bool _isLoading = false;
+  final Color themeColor = const Color(0xFF9900CC);
+
+  /// Método para retornar a InputDecoration padrão
+  InputDecoration _buildInputDecoration({
+    required String label,
+    required String hint,
+    String? helper,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      helperText: helper,
+      labelStyle: TextStyle(
+        color: themeColor.withOpacity(0.8),
+        fontWeight: FontWeight.w500,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: themeColor, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.red.shade300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.red.shade400, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+  }
 
   Future<void> _addExam() async {
     if (_nameController.text.isEmpty || _totalWeightController.text.isEmpty) {
@@ -63,131 +98,105 @@ class _AddExamModalState extends State<AddExamModal> {
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _totalWeightController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      // ------------------ DIÁLOGO ESTILIZADO ------------------
+    return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16.0),
       ),
-      backgroundColor: Colors.deepPurple.shade50, // Fundo suave
-
-      // ------------------ TÍTULO ------------------
-      title: Row(
-        children: [
-          Icon(
-            Icons.add_circle_outline,
-            color: Colors.deepPurple.shade600,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Adicionar Prova',
-            style: TextStyle(
-              color: Colors.deepPurple.shade700,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-
-      // ------------------ CONTEÚDO ------------------
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Campo "Nome da Prova"
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Nome da Prova',
-                labelStyle: TextStyle(
-                  color: Colors.deepPurple.shade700,
-                ),
-                hintText: 'Ex.: Prova de Matemática',
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.deepPurple.shade300),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Campo "Peso Total"
-            TextField(
-              controller: _totalWeightController,
-              decoration: InputDecoration(
-                labelText: 'Peso Total',
-                labelStyle: TextStyle(
-                  color: Colors.deepPurple.shade700,
-                ),
-                hintText: 'Ex.: 100',
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.deepPurple.shade300),
-                ),
-                helperText:
-                    'Informe quantos pontos a prova terá ao todo (Ex.: 100).',
-                helperStyle: TextStyle(
-                  fontSize: 12,
-                  color: Colors.deepPurple.shade400,
-                ),
-              ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Texto explicativo adicional (opcional)
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple.shade100.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              child: Text(
-                'O “Peso Total” representa quantos pontos ou qual a pontuação máxima que esta prova valerá. Posteriormente, você poderá cadastrar disciplinas (matérias) e definir o peso de cada uma delas dentro desta prova.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.deepPurple.shade900,
-                ),
-                textAlign: TextAlign.justify,
-              ),
-            ),
-          ],
-        ),
-      ),
-
-      // ------------------ BOTÕES DE AÇÃO ------------------
-      actions: [
-        // Botão de Cancelar
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.deepPurple.shade600,
-          ),
-          child: const Text('Cancelar'),
-        ),
-
-        // Botão de Adicionar ou Loader
-        _isLoading
-            ? const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: CircularProgressIndicator(),
-              )
-            : ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple.shade600,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
+      elevation: 8,
+      backgroundColor: Colors.grey.shade50,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Título com ícone
+              Row(
+                children: [
+                  Icon(Icons.add_circle_outline, color: themeColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Adicionar Prova',
+                    style: TextStyle(
+                      color: themeColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                onPressed: _addExam,
-                child: const Text(
-                  'Adicionar',
-                  style: TextStyle(color: Colors.white),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Campo "Nome da Prova"
+              TextField(
+                controller: _nameController,
+                decoration: _buildInputDecoration(
+                  label: 'Nome da Prova',
+                  hint: 'Ex.: Prova de Matemática',
                 ),
               ),
-      ],
+              const SizedBox(height: 16),
+              // Campo "Peso Total"
+              TextField(
+                controller: _totalWeightController,
+                decoration: _buildInputDecoration(
+                  label: 'Peso Total',
+                  hint: 'Ex.: 100',
+                  helper:
+                      'Informe quantos pontos a prova terá ao todo (Ex.: 100).',
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+              const SizedBox(height: 24),
+              // Botões de ação
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      foregroundColor: themeColor,
+                    ),
+                    child: const Text('Cancelar'),
+                  ),
+                  const SizedBox(width: 8),
+                  _isLoading
+                      ? const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: CircularProgressIndicator(),
+                        )
+                      : ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: themeColor,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _addExam,
+                          child: const Text(
+                            'Adicionar',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:provider/provider.dart';
 import 'package:study_tracker_frontend/components/add_subject_modal.dart';
 import 'package:study_tracker_frontend/pages/subject_details_page.dart';
@@ -18,12 +19,11 @@ class ExamDetailsPage extends StatelessWidget {
     );
   }
 
-  /// Formata o tempo de estudo (em segundos) para "X h Y min".
+  /// Converte segundos em "X h Y min".
   String _formatStudyTime(double totalSeconds) {
     final totalInt = totalSeconds.toInt();
     final hours = totalInt ~/ 3600;
     final minutes = (totalInt % 3600) ~/ 60;
-
     if (hours > 0) {
       return '$hours h ${minutes} min';
     } else {
@@ -33,7 +33,6 @@ class ExamDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Pegamos o Map enviado pelo Navigator.pushNamed:
     final examArgs =
         ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
     final examId = examArgs['examId'] as String;
@@ -42,14 +41,13 @@ class ExamDetailsPage extends StatelessWidget {
 
     return Consumer<AuthProvider>(
       builder: (ctx, authProvider, child) {
-        // Se não houver usuário logado ou o currentUser for nulo
         if (authProvider.currentUser == null) {
           return Scaffold(
             body: Center(
               child: Text(
                 'Nenhum usuário logado',
                 style: TextStyle(
-                  color: Colors.deepPurple.shade700,
+                  color: const Color(0xFF9900CC),
                   fontSize: 18,
                 ),
               ),
@@ -57,21 +55,19 @@ class ExamDetailsPage extends StatelessWidget {
           );
         }
 
-        // Pegar a lista de exames atualizada do usuário
         final exams = authProvider.currentUser!.exams;
-
-        // Localiza o exame cujo 'examId' corresponde ao examId
         final currentExam = exams.firstWhere(
           (e) => e['examId'] == examId,
           orElse: () => null,
         );
 
-        // Caso não encontre, exibe mensagem
+        // Se não encontrar esse exame no array do usuário:
         if (currentExam == null) {
           return Scaffold(
             appBar: AppBar(
               elevation: 0,
-              backgroundColor: Colors.deepPurple.shade600,
+              backgroundColor: const Color(0xFF9900CC),
+              iconTheme: const IconThemeData(color: Colors.white),
               centerTitle: true,
               title: Text(
                 examName,
@@ -82,11 +78,12 @@ class ExamDetailsPage extends StatelessWidget {
                 ),
               ),
             ),
+            backgroundColor: const Color(0xFF9900CC),
             body: Center(
               child: Text(
                 'Exame não encontrado.',
                 style: TextStyle(
-                  color: Colors.deepPurple.shade700,
+                  color: Colors.white.withOpacity(0.8),
                   fontSize: 18,
                 ),
               ),
@@ -94,14 +91,15 @@ class ExamDetailsPage extends StatelessWidget {
           );
         }
 
-        // Lista de disciplinas do exame
         final List subjects = currentExam['subjects'] ?? [];
 
         return Scaffold(
-          // --------------------- APP BAR ---------------------
+          // Fundo roxo para toda a tela
+          backgroundColor: const Color(0xFF9900CC),
           appBar: AppBar(
             elevation: 0,
-            backgroundColor: Colors.deepPurple.shade600,
+            backgroundColor: const Color(0xFF9900CC),
+            iconTheme: const IconThemeData(color: Colors.white),
             centerTitle: true,
             title: Text(
               examName,
@@ -112,8 +110,6 @@ class ExamDetailsPage extends StatelessWidget {
               ),
             ),
           ),
-
-          // --------------------- FLOATING BUTTON ---------------------
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () {
               if (examId.isEmpty || userId.isEmpty) {
@@ -126,172 +122,248 @@ class ExamDetailsPage extends StatelessWidget {
               }
               _showAddSubjectModal(context, examId, userId);
             },
-            backgroundColor: Colors.deepPurple.shade600,
-            icon: const Icon(
-              Icons.add,
-              color: Colors.white,
-            ),
+            backgroundColor: Colors.white,
+            icon: const Icon(Icons.add, color: Color(0xFF9900CC)),
             label: const Text(
               'Nova Disciplina',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-
-          // --------------------- CORPO/CONTEÚDO ---------------------
-          body: Container(
-            // Fundo com um gradiente suave
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.deepPurple.shade50,
-                  Colors.white,
-                ],
+              style: TextStyle(
+                color: Color(0xFF9900CC),
+                fontWeight: FontWeight.bold,
               ),
             ),
-            child: subjects.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Nenhuma disciplina cadastrada.',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: subjects.length,
-                    itemBuilder: (ctx, index) {
-                      final subject = Subject.fromJson(subjects[index]);
-
-                      // Calculamos o total de estudo (studyTime + dailyStudyTime)
-                      final double totalStudySeconds =
-                          subject.studyTime + subject.dailyStudyTime;
-                      final formattedStudyTime =
-                          _formatStudyTime(totalStudySeconds);
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 8.0,
-                        ),
-                        child: InkWell(
-                          onTap: () {
-                            // Aqui passamos userId e examId para o SubjectDetailsPage
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (ctx) => SubjectDetailsPage(
-                                  subject: subject,
-                                  userId: userId,
-                                  examId: examId,
-                                ),
-                              ),
-                            );
-                          },
-                          // Card com design arredondado e leve sombra
-                          child: Card(
-                            elevation: 3,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.0),
-                            ),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16.0),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Colors.deepPurple.shade100.withOpacity(0.4),
-                                    Colors.deepPurple.shade50.withOpacity(0.5),
-                                  ],
-                                ),
-                              ),
-                              // ListTile estilizado
-                              child: ListTile(
-                                // Ícone circular
-                                leading: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.deepPurple.shade400,
-                                        Colors.deepPurple.shade600,
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.book,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                                ),
-                                // Nome da Disciplina
-                                title: Text(
-                                  subject.name,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                // Exibe o peso e o total de horas estudadas (formatadas)
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.scale_outlined,
-                                          color: Colors.grey.shade800,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Peso: ${subject.weight}',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey.shade800,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.access_time_outlined,
-                                          color: Colors.grey.shade800,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Estudado: $formattedStudyTime',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey.shade800,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                trailing: const Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  size: 18,
-                                ),
-                              ),
-                            ),
+          ),
+          // Área de conteúdo
+          body: Container(
+            decoration: const BoxDecoration(
+              color: Colors.transparent, // Mantém o fundo roxo
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+              child: Container(
+                color: Colors.white, // Área branca para contraste
+                child: subjects.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Nenhuma disciplina cadastrada.',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey.shade700,
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      )
+                    : ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: subjects.length,
+                        itemBuilder: (ctx, index) {
+                          final subject = Subject.fromJson(subjects[index]);
+                          final double totalStudySeconds =
+                              subject.studyTime + subject.dailyStudyTime;
+                          final formattedStudyTime =
+                              _formatStudyTime(totalStudySeconds);
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 8.0,
+                            ),
+                            child: Slidable(
+                              key: ValueKey(subject.subjectId),
+                              endActionPane: ActionPane(
+                                motion: const ScrollMotion(),
+                                children: [
+                                  // Botão Editar
+                                  SlidableAction(
+                                    onPressed: (context) {
+                                      // Lógica para editar a disciplina (à implementar)
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              "Função de editar não implementada."),
+                                        ),
+                                      );
+                                    },
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
+                                    icon: Icons.edit,
+                                    label: 'Editar',
+                                  ),
+                                  // Botão Apagar
+                                  SlidableAction(
+                                    onPressed: (context) async {
+                                      final confirm = await showDialog(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          title: const Text("Confirmação"),
+                                          content: const Text(
+                                            "Deseja remover esta disciplina?",
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(false),
+                                              child: const Text("Cancelar"),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(true),
+                                              child: const Text("Remover"),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (confirm == true) {
+                                        try {
+                                          await authProvider.deleteSubject(
+                                            userId,
+                                            examId,
+                                            subject.subjectId,
+                                          );
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  "Disciplina removida com sucesso!"),
+                                            ),
+                                          );
+                                        } catch (error) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  "Erro ao remover a disciplina."),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                    icon: Icons.delete,
+                                    label: 'Apagar',
+                                  ),
+                                ],
+                              ),
+                              child: Card(
+                                color: Colors.white,
+                                elevation: 3,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16.0),
+                                ),
+                                child: ListTile(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (ctx) => SubjectDetailsPage(
+                                          subject: subject,
+                                          userId: userId,
+                                          examId: examId,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  leading: CircleAvatar(
+                                    radius: 22,
+                                    backgroundColor: const Color(0xFF9900CC)
+                                        .withOpacity(0.9),
+                                    child: const Icon(
+                                      Icons.book,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    subject.name,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.scale_outlined,
+                                            color: Colors.grey,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Peso: ${subject.weight}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.access_time_outlined,
+                                            color: Colors.grey,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Estudado: $formattedStudyTime',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.flag_outlined,
+                                            color: Colors.grey,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Meta: ${subject.studyGoal.toInt()} horas',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                    ],
+                                  ),
+                                  trailing: const Icon(
+                                    Icons.arrow_forward_ios_rounded,
+                                    size: 18,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
           ),
         );
       },

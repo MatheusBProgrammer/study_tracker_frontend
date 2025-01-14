@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:study_tracker_frontend/components/add_exam_modal.dart';
-import '../providers/auth_provider.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:study_tracker_frontend/components/add_exam_modal.dart';
+import 'package:study_tracker_frontend/components/edit_exam_modal.dart';
+import '../providers/auth_provider.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
+  // Modal para adicionar prova
   void _showAddExamModal(BuildContext context, String? userId) {
     showDialog(
       context: context,
@@ -16,12 +18,27 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  /// Converte o valor de [totalSeconds] em um texto no formato "X h Y min".
+  // Modal para editar prova
+  void _showEditExamModal(
+      BuildContext context, String? userId, Map<String, dynamic> exam) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return EditExamModal(
+          userId: userId ?? '',
+          examId: exam['examId'],
+          currentName: exam['name'],
+          currentTotalWeight: exam['totalWeight'].toString(),
+        );
+      },
+    );
+  }
+
+  // Converte o tempo em segundos para um formato "X h Y min"
   String _formatStudyTime(double totalSeconds) {
     final totalInt = totalSeconds.toInt();
     final hours = totalInt ~/ 3600;
     final minutes = (totalInt % 3600) ~/ 60;
-
     if (hours > 0) {
       return '$hours h ${minutes} min';
     } else {
@@ -29,10 +46,13 @@ class HomePage extends StatelessWidget {
     }
   }
 
-  /// Constrói o Card de um único exame, incluindo a lista de matérias (subjects).
-  Widget _buildExamCard(BuildContext context, Map<String, dynamic> exam,
-      String? userId, AuthProvider authProvider) {
-    // Lista de matérias do exame
+  // Constrói o card do exame com o novo layout
+  Widget _buildExamCard(
+    BuildContext context,
+    Map<String, dynamic> exam,
+    String? userId,
+    AuthProvider authProvider,
+  ) {
     final subjects = exam['subjects'] as List? ?? [];
 
     return Slidable(
@@ -40,12 +60,30 @@ class HomePage extends StatelessWidget {
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         children: [
+          // Botão de edição
+          SlidableAction(
+            onPressed: (context) {
+              _showEditExamModal(context, userId, exam);
+            },
+            backgroundColor: Colors.blueAccent,
+            foregroundColor: Colors.white,
+            icon: Icons.edit,
+            label: 'Editar',
+          ),
+          // Botão de exclusão
           SlidableAction(
             onPressed: (context) async {
               final confirm = await showDialog(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text("Confirmação"),
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  title: const Text(
+                    "Confirmação",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   content:
                       const Text("Tem certeza que deseja remover esta prova?"),
                   actions: [
@@ -66,11 +104,16 @@ class HomePage extends StatelessWidget {
                   await authProvider.deleteExam(userId, exam['examId']);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text("Prova removida com sucesso!")),
+                      content: Text("Prova removida com sucesso!"),
+                      backgroundColor: Colors.green,
+                    ),
                   );
                 } catch (error) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Erro ao remover a prova.")),
+                    const SnackBar(
+                      content: Text("Erro ao remover a prova."),
+                      backgroundColor: Colors.redAccent,
+                    ),
                   );
                 }
               }
@@ -78,13 +121,12 @@ class HomePage extends StatelessWidget {
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
             icon: Icons.delete,
-            label: 'Apagar',
+            label: 'Excluir',
           ),
         ],
       ),
       child: InkWell(
         onTap: () {
-          // Ao clicar no Card principal, abre a tela de detalhes do exame (se desejar)
           Navigator.pushNamed(
             context,
             '/exam-details',
@@ -97,134 +139,107 @@ class HomePage extends StatelessWidget {
           );
         },
         child: Card(
-          elevation: 3,
+          elevation: 4,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          color: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.0),
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16.0),
-              // Gradiente de fundo para o Card
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.deepPurple.shade100.withOpacity(0.4),
-                  Colors.deepPurple.shade50.withOpacity(0.5),
-                ],
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ---------- ListTile principal do Exame ----------
-                ListTile(
-                  // Ícone circular com gradiente
-                  leading: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.deepPurple.shade400,
-                          Colors.deepPurple.shade600,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.description,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  title: Text(
-                    exam['name'],
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  // Exemplo de "Peso total" (caso queira exibir do exame)
-                  subtitle: Row(
-                    children: [
-                      Icon(
-                        Icons.scale_outlined,
-                        color: Colors.grey.shade800,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Peso total: ${exam['totalWeight']}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade800,
-                        ),
-                      ),
-                    ],
-                  ),
-                  trailing: const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 18,
+          child: Column(
+            children: [
+              // Header do card
+              ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: const Color(0xFF9900CC),
+                  child: const Icon(
+                    Icons.description,
+                    color: Colors.white,
+                    size: 24,
                   ),
                 ),
-
-                // ---------- Exibe cada matéria (subject) do Exame ----------
-                if (subjects.isNotEmpty) const Divider(height: 1),
-
+                title: Text(
+                  exam['name'],
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                subtitle: Row(
+                  children: [
+                    const Icon(
+                      Icons.scale_outlined,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Peso total: ${exam['totalWeight']}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 18,
+                  color: Colors.grey,
+                ),
+              ),
+              // Lista de matérias, se houver
+              if (subjects.isNotEmpty) ...[
+                const Divider(height: 1, color: Colors.grey),
                 for (var subject in subjects)
                   ListTile(
-                    // Ícone da matéria
-                    leading: Icon(
+                    dense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: const Icon(
                       Icons.book_outlined,
-                      color: Colors.deepPurple.shade600,
+                      color: Colors.black54,
                     ),
                     title: Text(
                       subject['name'],
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
                     ),
                     subtitle: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        // Ícone e peso
-                        Icon(
+                        const Icon(
                           Icons.scale_outlined,
-                          color: Colors.grey.shade800,
-                          size: 16,
+                          size: 14,
+                          color: Colors.grey,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           'Peso: ${subject['weight']}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade800,
-                          ),
+                          style:
+                              const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                         const SizedBox(width: 12),
-
-                        // Ícone e tempo de estudo
-                        Icon(
+                        const Icon(
                           Icons.access_time_outlined,
-                          color: Colors.grey.shade800,
-                          size: 16,
+                          size: 14,
+                          color: Colors.grey,
                         ),
                         const SizedBox(width: 4),
-                        // Somamos studyTime + dailyStudyTime (ambos em segundos)
-                        // se essa for a sua intenção de "tempo total".
                         Text(
-                          'Estudado: ${_formatStudyTime((subject['studyTime'] + subject['dailyStudyTime']))}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade800,
-                          ),
+                          'Estudado: ${_formatStudyTime(subject['studyTime'] + subject['dailyStudyTime'])}',
+                          style:
+                              const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
                     ),
                   ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -233,20 +248,17 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Color themeColor = const Color(0xFF9900CC);
+
     return Consumer<AuthProvider>(
       builder: (ctx, authProvider, child) {
         final exams = authProvider.currentUser?.exams ?? [];
         final userId = authProvider.currentUser?.id;
-
-        // Convertemos totalStudySeconds do usuário para exibir no AppBar
-        // (caso queira exibir o total geral do usuário, por exemplo).
         final totalStudySeconds = authProvider.totalStudySeconds;
 
-        // Caso queria exibir o total de horas estudadas do usuário no AppBar:
         String _formatStudyTimeAppBar(int totalSeconds) {
           final hours = totalSeconds ~/ 3600;
           final minutes = (totalSeconds % 3600) ~/ 60;
-
           if (hours > 0) {
             return '$hours h ${minutes} min';
           } else {
@@ -255,23 +267,22 @@ class HomePage extends StatelessWidget {
         }
 
         return Scaffold(
-          // --------------------- APP BAR ---------------------
+          backgroundColor: themeColor,
           appBar: AppBar(
-            elevation: 0, // remove a sombra do AppBar
-            backgroundColor: Colors.deepPurple.shade600,
+            backgroundColor: themeColor,
             centerTitle: true,
+            elevation: 0,
             title: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
                   'Provas',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-                // Exemplo de exibir o total de horas estudadas do usuário
                 Text(
                   'Tempo Total Estudado: ${_formatStudyTimeAppBar(totalStudySeconds)}',
                   style: const TextStyle(
@@ -281,13 +292,13 @@ class HomePage extends StatelessWidget {
                 ),
               ],
             ),
-            leading: Container(
-              margin: const EdgeInsets.only(left: 12),
-              child: const Icon(
+            leading: IconButton(
+              icon: const Icon(
                 Icons.school,
                 size: 28,
                 color: Colors.white,
               ),
+              onPressed: () {},
             ),
             actions: [
               IconButton(
@@ -303,59 +314,45 @@ class HomePage extends StatelessWidget {
               ),
             ],
           ),
-
-          // --------------------- FLOATING BUTTON ---------------------
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => _showAddExamModal(context, userId),
-            backgroundColor: Colors.deepPurple.shade600,
-            icon: const Icon(
-              Icons.add,
-              color: Colors.white,
-            ),
-            label: const Text(
+            backgroundColor: Colors.white,
+            icon: Icon(Icons.add, color: themeColor),
+            label: Text(
               'Nova Prova',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: themeColor,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-
-          // --------------------- CORPO/CONTEÚDO ---------------------
           body: Container(
-            // Fundo com um gradiente suave
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.deepPurple.shade50,
-                  Colors.white,
-                ],
+              color: themeColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
               ),
             ),
             child: exams.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'Nenhuma prova cadastrada.',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
+                        color: Colors.white70,
                       ),
                     ),
                   )
                 : ListView.builder(
                     physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
                     itemCount: exams.length,
                     itemBuilder: (ctx, index) {
                       final exam = exams[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 8.0,
-                        ),
-                        // Aqui chamamos a função que constrói o Card do exame,
-                        // com as matérias dentro.
-                        child:
-                            _buildExamCard(context, exam, userId, authProvider),
-                      );
+                      return _buildExamCard(
+                          context, exam, userId, authProvider);
                     },
                   ),
           ),

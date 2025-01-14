@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-/// Classe TimerPage para controlar e enviar o tempo de estudo ao backend.
 class TimerPage extends StatefulWidget {
   final String userId;
   final String examId;
@@ -21,14 +20,13 @@ class TimerPage extends StatefulWidget {
 
 class _TimerPageState extends State<TimerPage> {
   Timer? _timer;
-  Duration _elapsed = Duration.zero; // tempo acumulado
-  bool _isRunning = false; // se está rodando ou pausado
+  Duration _elapsed = Duration.zero;
+  bool _isRunning = false;
+  bool _isLocked = false; // Indica se a tela está bloqueada
 
-  /// Inicia o timer (conta 1 segundo por vez).
   void _startTimer() {
-    if (_isRunning) return; // já está rodando
+    if (_isRunning) return;
     setState(() => _isRunning = true);
-
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
         _elapsed = _elapsed + const Duration(seconds: 1);
@@ -36,24 +34,16 @@ class _TimerPageState extends State<TimerPage> {
     });
   }
 
-  /// Pausa o timer.
   void _pauseTimer() {
-    if (!_isRunning) return; // já está pausado
+    if (!_isRunning) return;
     setState(() => _isRunning = false);
     _timer?.cancel();
   }
 
-  /// Finaliza o timer e faz PATCH no backend.
   Future<void> _stopTimerAndSend() async {
-    // Para se estiver rodando
-    if (_isRunning) {
-      _pauseTimer();
-    }
-
-    // Tempo total em segundos (inteiro).
+    if (_isRunning) _pauseTimer();
     final int totalSeconds = _elapsed.inSeconds;
 
-    // Montagem das URLs (ajuste se precisar de HTTPS, IP, etc.).
     final dailyUrl = Uri.parse(
       'http://localhost:8080/api/subjects/'
       '${widget.userId}/${widget.examId}/${widget.subjectId}/daily-study-time'
@@ -67,12 +57,10 @@ class _TimerPageState extends State<TimerPage> {
     );
 
     try {
-      // Faz as duas requisições PATCH (você pode usar Future.wait se quiser paralelizar).
       final dailyResponse = await http.patch(dailyUrl);
       final totalResponse = await http.patch(totalUrl);
 
       if (dailyResponse.statusCode == 200 && totalResponse.statusCode == 200) {
-        // Sucesso, zera o timer (opcional) e avisa o usuário
         setState(() {
           _elapsed = Duration.zero;
         });
@@ -83,7 +71,6 @@ class _TimerPageState extends State<TimerPage> {
           );
         }
       } else {
-        // Caso algum retorne status code != 200
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -97,7 +84,6 @@ class _TimerPageState extends State<TimerPage> {
         }
       }
     } catch (e) {
-      // Possível erro de conexão
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro de conexão: $e')),
@@ -105,11 +91,9 @@ class _TimerPageState extends State<TimerPage> {
       }
     }
 
-    // Retorna para a tela anterior após enviar
     if (mounted) Navigator.of(context).pop();
   }
 
-  /// Formata o tempo como HH:MM:SS para exibir ao usuário.
   String _formatDuration(Duration d) {
     final hours = d.inHours.toString().padLeft(2, '0');
     final minutes = (d.inMinutes % 60).toString().padLeft(2, '0');
@@ -117,9 +101,12 @@ class _TimerPageState extends State<TimerPage> {
     return '$hours:$minutes:$seconds';
   }
 
+  void _toggleLockScreen() {
+    setState(() => _isLocked = !_isLocked);
+  }
+
   @override
   void dispose() {
-    // Cancela o timer ao sair
     _timer?.cancel();
     super.dispose();
   }
@@ -127,13 +114,10 @@ class _TimerPageState extends State<TimerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Fundo roxo
-      backgroundColor: Colors.deepPurple.shade600,
-
+      backgroundColor: Color(0xFF9900CC),
       body: SafeArea(
         child: Stack(
           children: [
-            // Cronômetro no centro
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -147,58 +131,69 @@ class _TimerPageState extends State<TimerPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Botões Start / Pause / Stop
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // START
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          shape: const CircleBorder(),
-                          padding: const EdgeInsets.all(20),
+                  if (!_isLocked)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            shape: const CircleBorder(),
+                            padding: const EdgeInsets.all(20),
+                          ),
+                          onPressed: _startTimer,
+                          child:
+                              const Icon(Icons.play_arrow, color: Colors.white),
                         ),
-                        onPressed: _startTimer,
-                        child:
-                            const Icon(Icons.play_arrow, color: Colors.white),
-                      ),
-                      const SizedBox(width: 16),
-
-                      // PAUSE
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          shape: const CircleBorder(),
-                          padding: const EdgeInsets.all(20),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            shape: const CircleBorder(),
+                            padding: const EdgeInsets.all(20),
+                          ),
+                          onPressed: _pauseTimer,
+                          child: const Icon(Icons.pause, color: Colors.white),
                         ),
-                        onPressed: _pauseTimer,
-                        child: const Icon(Icons.pause, color: Colors.white),
-                      ),
-                      const SizedBox(width: 16),
-
-                      // STOP
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          shape: const CircleBorder(),
-                          padding: const EdgeInsets.all(20),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            shape: const CircleBorder(),
+                            padding: const EdgeInsets.all(20),
+                          ),
+                          onPressed: _stopTimerAndSend,
+                          child: const Icon(Icons.stop, color: Colors.white),
                         ),
-                        onPressed: _stopTimerAndSend,
-                        child: const Icon(Icons.stop, color: Colors.white),
-                      ),
-                    ],
-                  ),
+                      ],
+                    )
+                  else
+                    const Icon(
+                      Icons.lock,
+                      size: 48,
+                      color: Color(0xFF9900CC),
+                    ),
                 ],
               ),
             ),
-
-            // Botão de fechar no topo
             Positioned(
               top: 16,
               right: 16,
               child: IconButton(
                 icon: const Icon(Icons.close, size: 32, color: Colors.white),
                 onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton(
+                backgroundColor: _isLocked ? Colors.grey : Colors.white,
+                onPressed: _toggleLockScreen,
+                child: Icon(
+                  _isLocked ? Icons.lock_open : Icons.lock,
+                  color: Color(0xFF9900CC),
+                ),
               ),
             ),
           ],
